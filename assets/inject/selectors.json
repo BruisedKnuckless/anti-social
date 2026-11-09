@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "_comment": "Every Instagram selector lives here. Use href / aria-label / role / text, never generated class names. Text matches are English-only for now.",
+  "reelsNav": ["a[href$=\"/reels/\"]"],
+  "exploreNav": ["a[href=\"/explore/\"]"],
+  "searchPath": "/explore/search/",
+  "reelLink": "a[href*=\"/reel/\"]",
+  "feedPost": "article",
+  "storyItem": "[aria-label^=\"Story by\"]",
+  "storyItemText": ["Your story"],
+  "suggestedText": ["Suggested for you"],
+  "openAppText": ["Use the app", "Open app", "Get the app", "Open Instagram"]
+}

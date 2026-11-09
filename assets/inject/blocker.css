@@ -1,0 +1,14 @@
+/*
+ * Anti-Social blocker styles. Identical on iOS and Android.
+ * Toggles are classes on <html> (as-block-*), so switching a feature on/off
+ * is a class flip with no reload. blocker.js tags elements CSS can't target
+ * with data-as-tag="…" tokens. Nav-link rules are generated from
+ * selectors.json by script_builder.dart and appended below this file.
+ */
+
+html.as-block-stories [data-as-tag~="stories"],
+html.as-block-reels [data-as-tag~="reel"],
+html.as-block-suggested [data-as-tag~="suggested"],
+[data-as-tag~="openapp"] {
+  display: none !important;
+}
