@@ -31,9 +31,15 @@ class SettingsSheet extends StatelessWidget {
       children: [
         AsToggleTile(
           title: 'Reels',
-          subtitle: 'Hide the Reels tab, profile reels and video reels in your feed',
+          subtitle: 'Hide the Reels tab, the Reels feed and profile reels',
           value: cfg.blockReels,
           onChanged: (v) => set(cfg.copyWith(blockReels: v)),
+        ),
+        AsToggleTile(
+          title: 'Videos in your feed',
+          subtitle: 'Also hide video posts from people you follow',
+          value: cfg.blockFeedVideos,
+          onChanged: (v) => set(cfg.copyWith(blockFeedVideos: v)),
         ),
         AsToggleTile(
           title: 'Reels sent in DMs',

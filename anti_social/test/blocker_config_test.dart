@@ -7,9 +7,17 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
-  test('defaults are strict', () {
+  test('defaults block everything except friends\' video posts', () {
     const c = BlockerConfig();
-    expect(c.toJson().values, everyElement(isTrue));
+    final json = c.toJson()..remove('blockFeedVideos');
+    expect(json.values, everyElement(isTrue));
+    expect(c.blockFeedVideos, isFalse);
+  });
+
+  test('configs saved before blockFeedVideos existed still load', () {
+    final c = BlockerConfig.fromJson({'blockReels': true, 'blockStories': false});
+    expect(c.blockFeedVideos, isFalse);
+    expect(c.blockStories, isFalse);
   });
 
   test('JSON round trip', () {

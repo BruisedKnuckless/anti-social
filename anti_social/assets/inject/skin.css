@@ -135,3 +135,21 @@ html.as-has-tabbar main { padding-bottom: calc(var(--as-pill-h) + var(--as-sb) +
 html.as-has-tabbar #as-settings { display: flex; }
 #as-settings:active { transform: scale(0.92); }
 #as-settings svg { width: 24px; height: 24px; }
+
+/* ---- Empty feed note (everything left in the feed was blocked) -------- */
+html.as-feed-empty main [role="progressbar"][data-visualcompletion="loading-state"] { display: none !important; }
+#as-feed-note {
+  display: none;
+  position: fixed;
+  left: 32px;
+  right: 32px;
+  top: 38%;
+  text-align: center;
+  color: var(--as-icon);
+  font: 15px/1.4 -apple-system, system-ui, sans-serif;
+  pointer-events: none;
+  z-index: 10;
+}
+html.as-feed-empty #as-feed-note { display: block; }
+#as-feed-note .as-note-title { font-size: 20px; font-weight: 600; margin-bottom: 8px; }
+#as-feed-note .as-note-body { opacity: 0.6; }

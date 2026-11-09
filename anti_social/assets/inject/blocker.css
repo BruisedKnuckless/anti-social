@@ -12,8 +12,10 @@
 /* Reels tab in the nav, any link to the reels feed, profile "Reels" tabs. */
 html.as-block-reels a[href="/reels/"],
 html.as-block-reels a[href^="/reels/"],
-html.as-block-reels a[href$="/reels/"],
-html.as-block-reels [data-as-reel] { display: none !important; }
+html.as-block-reels a[href$="/reels/"] { display: none !important; }
+
+/* Video ("reel") posts in the home feed: separate toggle, off by default. */
+html.as-block-feed-videos [data-as-reel] { display: none !important; }
 
 /* ---- Stories -------------------------------------------------------- */
 html.as-block-stories [data-as-stories-tray] { display: none !important; }

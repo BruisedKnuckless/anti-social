@@ -33,7 +33,8 @@
     inboxTab: 'a[href="/direct/inbox/"]',
     logo: 'svg[aria-label="Instagram"]',
     activityLink: 'a[href="/notifications/"]',
-    createLink: 'a[href="#"], input[type="file"]'
+    createLink: 'a[href="#"], input[type="file"]',
+    feedLoader: 'main [role="progressbar"][data-visualcompletion="loading-state"]'
   };
 
   var TEXT = {
@@ -76,6 +77,7 @@
     var h = document.documentElement;
     if (!h) return;
     h.classList.toggle('as-block-reels', !!cfg.blockReels);
+    h.classList.toggle('as-block-feed-videos', !!cfg.blockFeedVideos);
     h.classList.toggle('as-block-stories', !!cfg.blockStories);
     h.classList.toggle('as-block-explore', !!cfg.blockExplore);
     h.classList.toggle('as-block-suggested', !!cfg.blockSuggested);
@@ -373,6 +375,34 @@
     }
   }
 
+  // ---- Empty feed: everything left was blocked ----------------------------
+  // Decided from our own tags + config (no layout reads, so no scroll jank).
+  function isHiddenPost(a) {
+    return (cfg.blockFeedVideos && a.hasAttribute('data-as-reel')) ||
+           (cfg.blockSuggested && a.hasAttribute('data-as-suggested'));
+  }
+
+  function updateFeedState() {
+    var onFeed = norm(location.pathname) === '/' && !!document.querySelector(SELECTORS.inboxTab);
+    var posts = onFeed ? document.querySelectorAll('main ' + SELECTORS.feedArticle) : [];
+    var hidden = 0;
+    for (var i = 0; i < posts.length; i++) if (isHiddenPost(posts[i])) hidden++;
+    var empty = posts.length > 0 && hidden === posts.length;
+    document.documentElement.classList.toggle('as-feed-empty', empty);
+    if (!empty) return;
+    var note = document.getElementById('as-feed-note');
+    if (!note) {
+      note = document.createElement('div');
+      note.id = 'as-feed-note';
+      note.innerHTML = '<div class="as-note-title">You\u2019re all caught up</div><div class="as-note-body"></div>';
+      document.body.appendChild(note);
+    }
+    var body = note.querySelector('.as-note-body');
+    var text = 'AntiSocial hid ' + hidden + (hidden === 1 ? ' post' : ' posts') +
+      ' (reels, ads and suggestions). Check back later for new posts from people you follow.';
+    if (body.textContent !== text) body.textContent = text;
+  }
+
   function tagChrome() {
     tagTabBar();
     tagTabBarPopovers();
@@ -390,6 +420,7 @@
     tagSuggestionBlocks();
     tagAppNags();
     tagChrome();
+    updateFeedState();
     onRoute(false);
   }
 
@@ -422,6 +453,7 @@
       }
     });
   }
+
 
 
   // ---- 8. Live config updates from Dart ---------------------------------

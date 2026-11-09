@@ -7,6 +7,7 @@ NavDecision d(String url, [BlockerConfig cfg = const BlockerConfig()]) =>
 
 const allOff = BlockerConfig(
   blockReels: false,
+  blockFeedVideos: false,
   blockDmReels: false,
   blockExplore: false,
   blockStories: false,

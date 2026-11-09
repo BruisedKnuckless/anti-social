@@ -5,14 +5,20 @@ import 'package:flutter/foundation.dart';
 class BlockerConfig {
   const BlockerConfig({
     this.blockReels = true,
+    this.blockFeedVideos = false,
     this.blockDmReels = true,
     this.blockExplore = true,
     this.blockStories = true,
     this.blockSuggested = true,
   });
 
-  /// Reels tab, the `/reels/` feed, profile reels tabs and reel posts in the feed.
+  /// Reels tab, the `/reels/` feed and profile reels tabs.
   final bool blockReels;
+
+  /// Video posts in the home feed. Instagram labels every video post a
+  /// "reel", so this also hides videos from people you follow. Off by
+  /// default; suggested reels are covered by [blockSuggested].
+  final bool blockFeedVideos;
 
   /// Single reels at `/reel/<id>`, e.g. the ones friends send you in DMs.
   final bool blockDmReels;
@@ -35,6 +41,7 @@ class BlockerConfig {
 
     return BlockerConfig(
       blockReels: read('blockReels', d.blockReels),
+      blockFeedVideos: read('blockFeedVideos', d.blockFeedVideos),
       blockDmReels: read('blockDmReels', d.blockDmReels),
       blockExplore: read('blockExplore', d.blockExplore),
       blockStories: read('blockStories', d.blockStories),
@@ -44,6 +51,7 @@ class BlockerConfig {
 
   Map<String, dynamic> toJson() => {
         'blockReels': blockReels,
+        'blockFeedVideos': blockFeedVideos,
         'blockDmReels': blockDmReels,
         'blockExplore': blockExplore,
         'blockStories': blockStories,
@@ -52,6 +60,7 @@ class BlockerConfig {
 
   BlockerConfig copyWith({
     bool? blockReels,
+    bool? blockFeedVideos,
     bool? blockDmReels,
     bool? blockExplore,
     bool? blockStories,
@@ -59,6 +68,7 @@ class BlockerConfig {
   }) =>
       BlockerConfig(
         blockReels: blockReels ?? this.blockReels,
+        blockFeedVideos: blockFeedVideos ?? this.blockFeedVideos,
         blockDmReels: blockDmReels ?? this.blockDmReels,
         blockExplore: blockExplore ?? this.blockExplore,
         blockStories: blockStories ?? this.blockStories,
@@ -69,14 +79,15 @@ class BlockerConfig {
   bool operator ==(Object other) =>
       other is BlockerConfig &&
       other.blockReels == blockReels &&
+      other.blockFeedVideos == blockFeedVideos &&
       other.blockDmReels == blockDmReels &&
       other.blockExplore == blockExplore &&
       other.blockStories == blockStories &&
       other.blockSuggested == blockSuggested;
 
   @override
-  int get hashCode => Object.hash(
-      blockReels, blockDmReels, blockExplore, blockStories, blockSuggested);
+  int get hashCode => Object.hash(blockReels, blockFeedVideos, blockDmReels,
+      blockExplore, blockStories, blockSuggested);
 
   @override
   String toString() => 'BlockerConfig(${toJson()})';
