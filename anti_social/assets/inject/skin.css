@@ -15,6 +15,8 @@
   --as-glass-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
   --as-tab-active: rgba(0, 0, 0, 0.07);
   --as-icon: #0c1014;
+  --as-skel: #efeff1;
+  --as-skel-hi: rgba(255, 255, 255, 0.65);
 }
 @media (prefers-color-scheme: dark) {
   :root {
@@ -23,6 +25,8 @@
     --as-glass-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
     --as-tab-active: rgba(255, 255, 255, 0.12);
     --as-icon: #f5f5f5;
+    --as-skel: #1e2329;
+    --as-skel-hi: rgba(255, 255, 255, 0.06);
   }
 }
 
@@ -63,6 +67,7 @@ a, img, svg, [role="button"], [role="link"] { -webkit-touch-callout: none; }
   z-index: 50;
 }
 /* Leave room for the settings button on the right. */
+html.as-has-tabbar #as-tabbar,
 html.as-has-tabbar [data-as-tabbar-wrap] {
   right: calc(var(--as-pill-gap) + var(--as-pill-h) + 10px) !important;
 }
@@ -76,6 +81,7 @@ html.as-has-tabbar [data-as-tabbar-wrap] {
   padding: 0 !important;
   height: auto !important;
 }
+#as-tabbar,
 [data-as-tabbar] {
   height: var(--as-pill-h) !important;
   padding: 6px !important;
@@ -89,6 +95,7 @@ html.as-has-tabbar [data-as-tabbar-wrap] {
   justify-content: space-between !important;
   align-items: stretch !important;
 }
+#as-tabbar .as-tab,
 [data-as-tab] {
   flex: 1 1 0 !important;
   display: flex !important;
@@ -97,8 +104,26 @@ html.as-has-tabbar [data-as-tabbar-wrap] {
   border-radius: 999px !important;
   transition: background-color 0.2s ease;
 }
+#as-tabbar .as-tab svg,
 [data-as-tab] svg { width: 26px !important; height: 26px !important; }
+#as-tabbar .as-tab img { width: 26px; height: 26px; border-radius: 50%; object-fit: cover; }
+#as-tabbar .as-tab-active,
 [data-as-tab-active] { background: var(--as-tab-active) !important; }
+
+/* Our own tab bar for pages where Instagram drops its own (DM inbox). */
+#as-tabbar {
+  display: none;
+  position: fixed;
+  left: var(--as-pill-gap);
+  right: var(--as-pill-gap);
+  bottom: calc(var(--as-sb) + 4px);
+  z-index: 50;
+  color: var(--as-icon);
+  flex-direction: row;
+}
+html.as-fallback-tabbar #as-tabbar { display: flex; }
+#as-tabbar .as-tab { cursor: pointer; }
+#as-tabbar .as-tab:active { opacity: 0.6; }
 
 /* Native order: Home, Reels, Messages, Search, Profile. */
 [data-as-tab="home"] { order: 1; }
@@ -109,7 +134,16 @@ html.as-has-tabbar [data-as-tabbar-wrap] {
 html.as-block-reels [data-as-tab="reels"] { display: none !important; }
 
 /* Content can scroll under the pill but the last post stays reachable. */
-html.as-has-tabbar main { padding-bottom: calc(var(--as-pill-h) + var(--as-sb) + 24px) !important; }
+html.as-has-tabbar:not(.as-reels-page) main { padding-bottom: calc(var(--as-pill-h) + var(--as-sb) + 24px) !important; }
+
+/* ---- Reels: full screen, one reel per swipe, captions above the pill --- */
+html.as-reels-page [data-as-reels-scroller] {
+  bottom: 0 !important;
+  height: auto !important;
+}
+html.as-reels-page [data-as-reel-overlay] {
+  padding-bottom: calc(var(--as-pill-h) + var(--as-sb) + 14px) !important;
+}
 
 /* ---- Settings button (added by blocker.js, outside Instagram's DOM) --- */
 #as-settings {
@@ -153,3 +187,69 @@ html.as-feed-empty main [role="progressbar"][data-visualcompletion="loading-stat
 html.as-feed-empty #as-feed-note { display: block; }
 #as-feed-note .as-note-title { font-size: 20px; font-weight: 600; margin-bottom: 8px; }
 #as-feed-note .as-note-body { opacity: 0.6; }
+
+/* ---- Skeleton loaders (instead of Instagram's spinner) ---------------- */
+[data-as-skel="post"],
+[data-as-skel="rows"] {
+  position: relative !important;
+  display: block !important;
+  width: 100% !important;
+  overflow: hidden !important;
+  background: none !important;
+}
+[data-as-skel="post"] > *,
+[data-as-skel="rows"] > * { display: none !important; }
+[data-as-skel="post"] { height: 560px !important; }
+[data-as-skel="rows"] { height: 432px !important; }
+[data-as-skel="post"]::before,
+[data-as-skel="rows"]::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+}
+[data-as-skel="post"]::before {
+  background:
+    radial-gradient(circle 18px at 34px 30px, var(--as-skel) 97%, transparent 100%),
+    linear-gradient(var(--as-skel), var(--as-skel)) 64px 24px / 140px 12px no-repeat,
+    linear-gradient(var(--as-skel), var(--as-skel)) 0 60px / 100% 400px no-repeat,
+    linear-gradient(var(--as-skel), var(--as-skel)) 16px 480px / 72% 12px no-repeat,
+    linear-gradient(var(--as-skel), var(--as-skel)) 16px 502px / 44% 12px no-repeat;
+}
+[data-as-skel="rows"]::before {
+  background:
+    radial-gradient(circle 26px at 44px 36px, var(--as-skel) 97%, transparent 100%) 0 0 / 100% 72px repeat-y,
+    linear-gradient(to bottom, var(--as-skel) 0 12px, transparent 12px) 84px 22px / 46% 72px repeat-y,
+    linear-gradient(to bottom, var(--as-skel) 0 10px, transparent 10px) 84px 44px / 28% 72px repeat-y;
+}
+/* Shimmer: a soft highlight sweeping across (transform only = GPU). */
+[data-as-skel="post"]::after,
+[data-as-skel="rows"]::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 60%;
+  background: linear-gradient(90deg, transparent, var(--as-skel-hi), transparent);
+  transform: translate3d(-100%, 0, 0);
+  animation: asShimmer 1.4s ease-in-out infinite;
+}
+@keyframes asShimmer { to { transform: translate3d(270%, 0, 0); } }
+
+/* ---- Page transitions (blocker.js toggles the classes) ---------------- */
+html { overflow-x: clip; -webkit-text-size-adjust: 100%; }
+@keyframes asPushA { from { transform: translate3d(28%, 0, 0); opacity: 0.5; } to { transform: none; opacity: 1; } }
+@keyframes asPushB { from { transform: translate3d(28%, 0, 0); opacity: 0.5; } to { transform: none; opacity: 1; } }
+@keyframes asFadeA { from { opacity: 0; } to { opacity: 1; } }
+@keyframes asFadeB { from { opacity: 0; } to { opacity: 1; } }
+html.as-nav-push-a main { animation: asPushA 0.34s cubic-bezier(0.22, 0.9, 0.24, 1) both; }
+html.as-nav-push-b main { animation: asPushB 0.34s cubic-bezier(0.22, 0.9, 0.24, 1) both; }
+html.as-nav-pop-a main,
+html.as-nav-tab-a main { animation: asFadeA 0.2s ease-out both; }
+html.as-nav-pop-b main,
+html.as-nav-tab-b main { animation: asFadeB 0.2s ease-out both; }
+
+@media (prefers-reduced-motion: reduce) {
+  html[class*="as-nav-"] main { animation: none !important; }
+  [data-as-skel]::after { animation: none !important; }
+}

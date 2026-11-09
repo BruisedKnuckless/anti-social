@@ -19,6 +19,8 @@ class AsColors extends ThemeExtension<AsColors> {
     required this.snackbarBg,
     required this.snackbarText,
     required this.scrim,
+    required this.skeleton,
+    required this.skeletonHighlight,
   });
 
   final Color background;
@@ -36,6 +38,10 @@ class AsColors extends ThemeExtension<AsColors> {
   final Color snackbarText;
   final Color scrim;
 
+  /// Placeholder blocks while content loads, and the shimmer sweeping over them.
+  final Color skeleton;
+  final Color skeletonHighlight;
+
   static const light = AsColors(
     background: Color(0xFFFFFFFF),
     surface: Color(0xFFFFFFFF),
@@ -51,6 +57,8 @@ class AsColors extends ThemeExtension<AsColors> {
     snackbarBg: Color(0xFF1C1C21),
     snackbarText: Color(0xFFFFFFFF),
     scrim: Color(0x66000000),
+    skeleton: Color(0xFFEFEFF1),
+    skeletonHighlight: Color(0xFFF8F8F9),
   );
 
   static const dark = AsColors(
@@ -68,6 +76,8 @@ class AsColors extends ThemeExtension<AsColors> {
     snackbarBg: Color(0xFFF5F5F7),
     snackbarText: Color(0xFF111114),
     scrim: Color(0x99000000),
+    skeleton: Color(0xFF1E2329),
+    skeletonHighlight: Color(0xFF282E35),
   );
 
   static AsColors of(BuildContext context) =>
@@ -95,6 +105,8 @@ class AsColors extends ThemeExtension<AsColors> {
       snackbarBg: l(snackbarBg, other.snackbarBg),
       snackbarText: l(snackbarText, other.snackbarText),
       scrim: l(scrim, other.scrim),
+      skeleton: l(skeleton, other.skeleton),
+      skeletonHighlight: l(skeletonHighlight, other.skeletonHighlight),
     );
   }
 }

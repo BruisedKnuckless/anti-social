@@ -15,7 +15,7 @@ import '../services/script_builder.dart';
 import '../services/settings_service.dart';
 import '../ui/theme/tokens.dart';
 import '../ui/widgets/as_error_view.dart';
-import '../ui/widgets/as_progress_bar.dart';
+import '../ui/widgets/as_skeleton.dart';
 import '../ui/widgets/as_snackbar.dart';
 import '../utils/url_rules.dart';
 import 'settings_sheet.dart';
@@ -50,9 +50,17 @@ class _WebScreenState extends State<WebScreen> {
   InAppWebViewController? _controller;
   List<UserScript>? _initialScripts;
 
-  double _progress = 0;
   String? _error;
   DateTime _lastBlockSnack = DateTime.fromMillisecondsSinceEpoch(0);
+
+  /// Shimmering placeholder over the web view during full page loads
+  /// (launch, guard redirects). Fades out once Instagram's shell is drawn.
+  bool _showSkeleton = true;
+  Timer? _skeletonTimeout;
+
+  /// Native iOS pull-to-refresh (UIRefreshControl); SwipeRefreshLayout on Android.
+  late final PullToRefreshController _pullToRefresh;
+  bool _refreshing = false;
 
   @override
   void initState() {
@@ -60,6 +68,11 @@ class _WebScreenState extends State<WebScreen> {
     _settings = context.read<SettingsService>();
     _config = _settings.config;
     _settings.addListener(_onConfigChanged);
+    _pullToRefresh = PullToRefreshController(
+      settings: PullToRefreshSettings(),
+      onRefresh: _onPullToRefresh,
+    );
+    _armSkeletonTimeout();
     buildUserScripts(_config).then((s) {
       if (mounted) setState(() => _initialScripts = s);
     });
@@ -68,7 +81,41 @@ class _WebScreenState extends State<WebScreen> {
   @override
   void dispose() {
     _settings.removeListener(_onConfigChanged);
+    _skeletonTimeout?.cancel();
+    _pullToRefresh.dispose();
     super.dispose();
+  }
+
+  // ---- Loading states ---------------------------------------------------------
+
+  void _armSkeletonTimeout() {
+    _skeletonTimeout?.cancel();
+    // Never leave the skeleton up forever (slow network, unknown page).
+    _skeletonTimeout = Timer(const Duration(seconds: 10), _hideSkeleton);
+  }
+
+  void _showSkeletonNow() {
+    // A pull-to-refresh keeps the old page visible under the native spinner.
+    if (_refreshing || _showSkeleton) return;
+    setState(() => _showSkeleton = true);
+    _armSkeletonTimeout();
+  }
+
+  void _hideSkeleton() {
+    _skeletonTimeout?.cancel();
+    if (mounted && _showSkeleton) setState(() => _showSkeleton = false);
+  }
+
+  void _onPullToRefresh() {
+    HapticFeedback.mediumImpact();
+    _refreshing = true;
+    _controller?.reload();
+  }
+
+  void _endRefresh() {
+    if (!_refreshing) return;
+    _refreshing = false;
+    _pullToRefresh.endRefreshing();
   }
 
   InAppWebViewSettings _webSettings(BlockerConfig cfg) => InAppWebViewSettings(
@@ -185,6 +232,8 @@ class _WebScreenState extends State<WebScreen> {
   void _onUpdateVisitedHistory(
       InAppWebViewController c, WebUri? url, bool? isReload) {
     if (url == null) return;
+    // Pulling down inside a chat loads older messages, not a refresh.
+    _pullToRefresh.setEnabled(!url.path.startsWith('/direct/t/'));
     if (decideNavigation(url, _config) is NavAllow) return;
     Future.delayed(const Duration(milliseconds: 400), () async {
       final now = await c.getUrl();
@@ -227,6 +276,10 @@ class _WebScreenState extends State<WebScreen> {
     debugPrint('Blocker event: $type $data');
     if (type == 'blocked' && data is Map) {
       _showBlocked((data['reason'] as String?) ?? 'Blocked');
+    } else if (type == 'shell_ready') {
+      _hideSkeleton();
+    } else if (type == 'haptic') {
+      HapticFeedback.selectionClick();
     } else if (type == 'open_settings') {
       HapticFeedback.lightImpact();
       _openSettings();
@@ -237,6 +290,8 @@ class _WebScreenState extends State<WebScreen> {
       WebResourceError error) {
     if (request.isForMainFrame == false) return;
     if (!_networkErrors.contains(error.type)) return;
+    _endRefresh();
+    _hideSkeleton();
     setState(() => _error = error.description);
   }
 
@@ -248,7 +303,6 @@ class _WebScreenState extends State<WebScreen> {
   Widget build(BuildContext context) {
     final c = AsColors.of(context);
     final scripts = _initialScripts;
-    final loading = scripts == null || _progress < 1.0;
 
     return PopScope(
       canPop: false,
@@ -271,6 +325,7 @@ class _WebScreenState extends State<WebScreen> {
                   initialUrlRequest: URLRequest(url: WebUri(kHomeUrl)),
                   initialSettings: _webSettings(_config),
                   initialUserScripts: UnmodifiableListView(scripts),
+                  pullToRefreshController: _pullToRefresh,
                   onWebViewCreated: (controller) {
                     _controller = controller;
                     controller.addJavaScriptHandler(
@@ -281,10 +336,12 @@ class _WebScreenState extends State<WebScreen> {
                   shouldOverrideUrlLoading: _shouldOverrideUrlLoading,
                   onUpdateVisitedHistory: _onUpdateVisitedHistory,
                   onCreateWindow: _onCreateWindow,
-                  onProgressChanged: (_, p) {
-                    final next = p / 100;
-                    // Only rebuild when the bar needs to appear/move/disappear.
-                    if (next != _progress) setState(() => _progress = next);
+                  onLoadStart: (_, _) => _showSkeletonNow(),
+                  onLoadStop: (_, _) {
+                    _endRefresh();
+                    // Pages without Instagram's shell (login, errors) still
+                    // drop the skeleton once loaded.
+                    Future.delayed(const Duration(milliseconds: 300), _hideSkeleton);
                   },
                   onReceivedError: _onReceivedError,
                 ),
@@ -296,15 +353,21 @@ class _WebScreenState extends State<WebScreen> {
                     onRetry: _reload,
                   ),
                 ),
-              // Only in the tree while loading, so nothing is drawn over the
+              // Fades out, then leaves the tree: nothing is drawn over the
               // web view while you scroll.
-              if (loading)
-                Positioned(
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  child: AsProgressBar(progress: scripts == null ? 0 : _progress),
+              Positioned.fill(
+                child: IgnorePointer(
+                  ignoring: !_showSkeleton,
+                  child: AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 220),
+                    switchInCurve: Curves.easeOut,
+                    switchOutCurve: Curves.easeIn,
+                    child: _showSkeleton
+                        ? const AsFeedSkeleton(key: ValueKey('skeleton'))
+                        : const SizedBox.shrink(key: ValueKey('none')),
+                  ),
                 ),
+              ),
             ],
           ),
         ),

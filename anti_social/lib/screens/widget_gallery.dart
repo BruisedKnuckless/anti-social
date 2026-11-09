@@ -10,6 +10,7 @@ import '../ui/widgets/as_error_view.dart';
 import '../ui/widgets/as_fab.dart';
 import '../ui/widgets/as_icon_button.dart';
 import '../ui/widgets/as_progress_bar.dart';
+import '../ui/widgets/as_skeleton.dart';
 import '../ui/widgets/as_snackbar.dart';
 import '../ui/widgets/as_toggle_tile.dart';
 import '../ui/widgets/as_top_bar.dart';
@@ -178,6 +179,8 @@ class WidgetGalleryContent extends StatelessWidget {
               secondaryLabel: 'Turn off',
             ),
           ),
+          label('Loading skeleton'),
+          SizedBox(height: 360, child: AsFeedSkeleton(animate: interactive)),
           label('Error view'),
           SizedBox(
             height: 320,

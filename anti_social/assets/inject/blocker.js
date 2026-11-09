@@ -34,7 +34,8 @@
     logo: 'svg[aria-label="Instagram"]',
     activityLink: 'a[href="/notifications/"]',
     createLink: 'a[href="#"], input[type="file"]',
-    feedLoader: 'main [role="progressbar"][data-visualcompletion="loading-state"]'
+    // Instagram's spinner; replaced with skeleton placeholders (skin.css).
+    loader: '[role="progressbar"][data-visualcompletion="loading-state"]'
   };
 
   var TEXT = {
@@ -111,10 +112,15 @@
   }
 
   var lastHref = '';
+  var currentPath = location.pathname, prevPath = null;
   function onRoute(force) {
     if (!force && location.href === lastHref) return;
     lastHref = location.href;
-    if (document.body) markActiveTab();
+    if (location.pathname !== currentPath) {
+      prevPath = currentPath;
+      currentPath = location.pathname;
+    }
+    if (document.body) { markActiveTab(); ensureFallbackTabbar(); }
     var d = decide(location.pathname);
     if (!d) return;
     notify('blocked', { path: location.pathname, reason: d.reason });
@@ -130,14 +136,52 @@
   ['pushState', 'replaceState'].forEach(function (fn) {
     var orig = history[fn];
     history[fn] = function () {
+      var before = location.pathname;
       var r = orig.apply(this, arguments);
+      if (fn === 'pushState' && location.pathname !== before) {
+        animateNav(Date.now() - tabTapAt < 800 ? 'tab' : 'push');
+      }
       onRoute(false);
       return r;
     };
   });
-  window.addEventListener('popstate', function () { onRoute(false); });
+  window.addEventListener('popstate', function () {
+    animateNav(Date.now() - tabTapAt < 800 ? 'tab' : 'pop');
+    onRoute(false);
+  });
+
+  // ---- Page transitions (iOS-like) ------------------------------------------
+  // Push slides the new page in from the right, back/tab switches cross-fade.
+  // Alternating -a/-b class names restart the CSS animation without forcing
+  // a layout. Only transform/opacity animate, so it stays on the GPU.
+  var tabTapAt = 0, navFlip = false, navTimer = null;
+  var reduceMotion = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  function animateNav(kind) {
+    var h = document.documentElement;
+    if (!h || reduceMotion) return;
+    navFlip = !navFlip;
+    var cls = 'as-nav-' + kind + (navFlip ? '-a' : '-b');
+    h.className = h.className.replace(/\bas-nav-\S+/g, '').trim();
+    h.classList.add(cls);
+    clearTimeout(navTimer);
+    navTimer = setTimeout(function () { h.classList.remove(cls); }, 450);
+  }
+  // Tab taps: remember (for the transition type) and send a haptic tick.
+  document.addEventListener('click', function (e) {
+    var t = e.target;
+    if (t && t.closest && t.closest('[data-as-tab], #as-tabbar [data-href]')) {
+      tabTapAt = Date.now();
+      notify('haptic', null);
+    }
+  }, true);
 
   // ---- 5. Sweep: tag what CSS can't target ------------------------------
+  // While the user scrolls, only the cheap "must hide before it's visible"
+  // work runs; the rest waits until scrolling pauses.
+  var lastScrollAt = 0;
+  window.addEventListener('scroll', function () { lastScrollAt = Date.now(); }, { passive: true, capture: true });
+  function isScrolling() { return Date.now() - lastScrollAt < 200; }
+
   // textContent, NOT innerText: innerText forces a layout pass on every
   // read, which made scrolling stutter.
   function textOf(el) {
@@ -223,12 +267,14 @@
     }
   }
 
+  var nagChecked = typeof WeakSet === 'function' ? new WeakSet() : null;
   function tagAppNags() {
     var els = document.querySelectorAll(SELECTORS.appNagCandidates);
     for (var i = 0; i < els.length; i++) {
       var el = els[i];
-      if (el.hasAttribute('data-as-app-nag')) continue;
+      if (el.hasAttribute('data-as-app-nag') || (nagChecked && nagChecked.has(el))) continue;
       var t = textOf(el).trim();
+      if (t.length && nagChecked) nagChecked.add(el);
       if (t.length && t.length < 20 && TEXT.appNag.indexOf(t) !== -1) {
         el.setAttribute('data-as-app-nag', '1');
         hideNagBanner(el);
@@ -300,8 +346,10 @@
 
   function markActiveTab() {
     var row = document.querySelector('[data-as-tabbar]');
-    document.documentElement.classList.toggle('as-has-tabbar', !!(row && row.offsetParent !== null));
+    document.documentElement.classList.toggle('as-has-tabbar',
+      !!row || document.documentElement.classList.contains('as-fallback-tabbar'));
     if (!row) return;
+    cacheTabIcons(row);
     var p = location.pathname;
     var active = p === '/' ? 'home'
       : p.indexOf('/direct') === 0 ? 'direct'
@@ -403,25 +451,220 @@
     if (body.textContent !== text) body.textContent = text;
   }
 
+  // ---- Fallback tab bar ------------------------------------------------------
+  // Instagram's web app removes its tab bar on the DM inbox. We draw our own
+  // there (outside React), with Instagram's own icons cached from the real
+  // tab bar when we last saw it, or simple outline icons as a fallback.
+  var ICON_KEY = 'as_tab_icons_v1';
+  var GENERIC_ICONS = {
+    home: '<path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/>',
+    reels: '<rect x="3" y="3" width="18" height="18" rx="5"/><path d="M10 8.5v7l6-3.5z"/>',
+    direct: '<path d="M21.5 2.5 2.5 9.5l7.5 3 3 7.5z"/><path d="M10 12.5l11.5-10"/>',
+    explore: '<circle cx="11" cy="11" r="7"/><path d="m20.5 20.5-4.5-4.5"/>',
+    profile: '<circle cx="12" cy="8.5" r="4"/><path d="M4 21c.5-4 4-6 8-6s7.5 2 8 6"/>'
+  };
+  var TAB_ORDER = ['home', 'reels', 'direct', 'explore', 'profile'];
+  var iconCacheSaved = '';
+
+  function readIconCache() {
+    try { return JSON.parse(localStorage.getItem(ICON_KEY) || '{}') || {}; } catch (e) { return {}; }
+  }
+
+  // Store each tab's icon while that tab is NOT active (inactive = outline).
+  function cacheTabIcons(row) {
+    var cache = readIconCache(), changed = false;
+    var tabs = row.querySelectorAll('[data-as-tab]');
+    for (var i = 0; i < tabs.length; i++) {
+      var t = tabs[i], name = t.getAttribute('data-as-tab');
+      var a = t.querySelector('a[href]');
+      if (!a) continue;
+      var href = a.getAttribute('href');
+      var icon = a.querySelector('svg, img');
+      var entry = cache[name] || {};
+      if (entry.href !== href) { entry.href = href; changed = true; }
+      if (icon && !t.hasAttribute('data-as-tab-active') && entry.html !== icon.outerHTML) {
+        entry.html = icon.outerHTML; changed = true;
+      }
+      cache[name] = entry;
+    }
+    if (!changed) return;
+    var json = JSON.stringify(cache);
+    if (json === iconCacheSaved) return;
+    iconCacheSaved = json;
+    try { localStorage.setItem(ICON_KEY, json); } catch (e) { /* storage blocked */ }
+  }
+
+  function isFallbackPage() {
+    var p = location.pathname;
+    return p.indexOf('/direct/inbox') === 0 || p.indexOf('/direct/requests') === 0;
+  }
+
+  function buildFallbackTabbar() {
+    var cache = readIconCache();
+    var nav = document.createElement('nav');
+    nav.id = 'as-tabbar';
+    var html = '';
+    TAB_ORDER.forEach(function (name) {
+      if (name === 'reels' && cfg.blockReels) return;
+      var href = (cache[name] && cache[name].href) ||
+        { home: '/', reels: '/reels/', direct: '/direct/inbox/', explore: '/explore/' }[name];
+      if (!href) return; // profile link unknown until we've seen the real tab bar
+      var icon = (cache[name] && cache[name].html) ||
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round">' +
+        GENERIC_ICONS[name] + '</svg>';
+      html += '<div class="as-tab" data-tab="' + name + '" data-href="' + href + '">' + icon + '</div>';
+    });
+    nav.innerHTML = html;
+    nav.addEventListener('click', function (e) {
+      var tab = e.target.closest('[data-href]');
+      if (!tab) return;
+      e.preventDefault();
+      goToTab(tab.getAttribute('data-href'));
+    });
+    return nav;
+  }
+
+  // Instagram's router ignores programmatic pushState, so: real "back" when
+  // returning to the page we came from (instant, SPA), otherwise a normal load
+  // (the Flutter skeleton covers it).
+  function goToTab(href) {
+    if (norm(href) === norm(location.pathname)) return;
+    if (prevPath && norm(prevPath) === norm(href) && history.length > 1) {
+      history.back();
+    } else {
+      location.assign(href);
+    }
+  }
+
+  function ensureFallbackTabbar() {
+    var h = document.documentElement;
+    var want = !document.querySelector('[data-as-tabbar]') && isFallbackPage();
+    h.classList.toggle('as-fallback-tabbar', want);
+    var bar = document.getElementById('as-tabbar');
+    if (!want) return;
+    if (!bar) { bar = buildFallbackTabbar(); document.body.appendChild(bar); }
+    var p = location.pathname;
+    var active = p.indexOf('/direct') === 0 ? 'direct' : null;
+    var tabs = bar.querySelectorAll('.as-tab');
+    for (var i = 0; i < tabs.length; i++) {
+      tabs[i].classList.toggle('as-tab-active', tabs[i].getAttribute('data-tab') === active);
+    }
+    h.classList.add('as-has-tabbar');
+  }
+
+  // ---- Skeleton loaders -------------------------------------------------------
+  // Tag Instagram's spinners so skin.css draws shimmering placeholders that
+  // fit the page: a post on the feed, list rows elsewhere. Spinners inside
+  // buttons/links/dialogs keep their normal look.
+  function tagLoaders() {
+    var loaders = document.querySelectorAll(SELECTORS.loader + ':not([data-as-skel])');
+    if (!loaders.length) return;
+    var kind = norm(location.pathname) === '/' ? 'post' : 'rows';
+    for (var i = 0; i < loaders.length; i++) {
+      var el = loaders[i];
+      var inline = el.closest('button, a, [role="button"], [role="dialog"]');
+      el.setAttribute('data-as-skel', inline ? 'none' : kind);
+    }
+  }
+
+  // ---- Reels page: full-screen reels like the native app ---------------------
+  // Instagram sizes the reels scroller for its old full-width tab bar (79px
+  // short) while each reel is drawn full height, so reels overlap and drift.
+  // We make the scroller full-screen (skin.css) and lift each reel's caption
+  // overlay above the floating tab bar.
+  function tagReelsPage() {
+    var h = document.documentElement;
+    var on = location.pathname.indexOf('/reels') === 0;
+    h.classList.toggle('as-reels-page', on);
+    if (!on) return;
+    var sc = document.querySelector('[data-as-reels-scroller]');
+    if (!sc) {
+      var v = document.querySelector('main video');
+      var el = v && v.parentElement;
+      while (el && el.tagName !== 'MAIN' && getComputedStyle(el).position !== 'fixed') el = el.parentElement;
+      if (!el || el.tagName === 'MAIN') return;
+      el.setAttribute('data-as-reels-scroller', '1');
+      sc = el;
+    }
+    for (var i = 0; i < sc.children.length; i++) {
+      var item = sc.children[i];
+      if (item.hasAttribute('data-as-reel-done')) continue;
+      var overlay = findReelOverlay(item);
+      if (overlay) {
+        overlay.setAttribute('data-as-reel-overlay', '1');
+        item.setAttribute('data-as-reel-done', '1');
+      }
+    }
+  }
+
+  // The deepest full-height, bottom-anchored box with text = the caption,
+  // author and action buttons. Checked once per reel.
+  function findReelOverlay(item) {
+    var itemH = item.clientHeight || 1, best = null, bestDepth = -1;
+    var divs = item.querySelectorAll('div');
+    for (var i = 0; i < divs.length; i++) {
+      var d = divs[i];
+      var cs = getComputedStyle(d);
+      if (cs.position !== 'absolute' || cs.bottom !== '0px') continue;
+      if (d.clientHeight < itemH * 0.5 || !(d.textContent || '').trim()) continue;
+      var depth = 0, e = d;
+      while (e && e !== item) { depth++; e = e.parentElement; }
+      if (depth > bestDepth) { best = d; bestDepth = depth; }
+    }
+    return best;
+  }
+
+  // Tell Dart once per page when Instagram's shell is on screen, so the
+  // launch skeleton can fade out.
+  var shellNotified = false;
+  function notifyShellReady() {
+    if (shellNotified) return;
+    if (document.querySelector('[data-as-tabbar], [data-as-header], main')) {
+      shellNotified = true;
+      notify('shell_ready', null);
+    }
+  }
+
   function tagChrome() {
     tagTabBar();
     tagTabBarPopovers();
     markActiveTab();
+    ensureFallbackTabbar();
     tagHeader();
     ensureSettingsButton();
   }
 
+  // Light work: runs on every sweep (posts must be hidden before they scroll
+  // into view; chrome and loaders are cheap once tagged).
   function sweep() {
     if (!document.body) return;
     ensureStyle();
     applyClasses();
     tagArticles();
+    tagChrome();
+    tagLoaders();
+    tagReelsPage();
+    updateFeedState();
+    notifyShellReady();
+    onRoute(false);
+    if (isScrolling()) scheduleHeavy(); else heavySweep();
+  }
+
+  // Heavier whole-page searches: skipped while scrolling.
+  var lastHeavyAt = 0, heavyTimer = null;
+  function heavySweep() {
+    if (Date.now() - lastHeavyAt < 250) { scheduleHeavy(); return; }
+    lastHeavyAt = Date.now();
     findStoriesTray();
     tagSuggestionBlocks();
     tagAppNags();
-    tagChrome();
-    updateFeedState();
-    onRoute(false);
+  }
+  function scheduleHeavy() {
+    if (heavyTimer) return;
+    heavyTimer = setTimeout(function () {
+      heavyTimer = null;
+      if (isScrolling()) scheduleHeavy(); else heavySweep();
+    }, 300);
   }
 
   // ---- 6. Throttled observer (battery friendly) -------------------------
@@ -456,9 +699,13 @@
 
 
 
+
+
   // ---- 8. Live config updates from Dart ---------------------------------
   window.__AS_UPDATE = function (next) {
     Object.assign(cfg, next || {});
+    var bar = document.getElementById('as-tabbar');
+    if (bar) bar.remove();
     applyClasses();
     sweep();
     onRoute(true);
