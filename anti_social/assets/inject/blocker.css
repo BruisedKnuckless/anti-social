@@ -8,9 +8,6 @@
  * aria-label, role, or the data-as-* attributes blocker.js adds.
  */
 
-/* Same overscroll on iOS (WebKit bounce) and Android (Chromium stretch). */
-html { overscroll-behavior: none; }
-
 /* ---- Reels ---------------------------------------------------------- */
 /* Reels tab in the nav, any link to the reels feed, profile "Reels" tabs. */
 html.as-block-reels a[href="/reels/"],

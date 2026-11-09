@@ -7,6 +7,7 @@ import '../models/blocker_config.dart';
 
 const String kCssAsset = 'assets/inject/blocker.css';
 const String kJsAsset = 'assets/inject/blocker.js';
+const String kSkinAsset = 'assets/inject/skin.css';
 
 /// `window.__AS_CONFIG = {...};`
 String configScriptSource(BlockerConfig cfg) =>
@@ -37,7 +38,7 @@ String? _js;
 Future<List<UserScript>> buildUserScripts(BlockerConfig cfg,
     {AssetBundle? bundle}) async {
   final b = bundle ?? rootBundle;
-  _css ??= await b.loadString(kCssAsset);
+  _css ??= '${await b.loadString(kCssAsset)}\n${await b.loadString(kSkinAsset)}';
   _js ??= await b.loadString(kJsAsset);
 
   UserScript script(String source) => UserScript(

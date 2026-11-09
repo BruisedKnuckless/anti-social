@@ -15,13 +15,10 @@ import '../services/script_builder.dart';
 import '../services/settings_service.dart';
 import '../ui/theme/tokens.dart';
 import '../ui/widgets/as_error_view.dart';
-import '../ui/widgets/as_icon_button.dart';
 import '../ui/widgets/as_progress_bar.dart';
 import '../ui/widgets/as_snackbar.dart';
-import '../ui/widgets/as_top_bar.dart';
 import '../utils/url_rules.dart';
 import 'settings_sheet.dart';
-import 'widget_gallery.dart';
 
 /// Network failures that get the offline screen. Everything else (e.g. the
 /// CANCELLED error WebKit reports when the URL guard cancels a load) is ignored.
@@ -54,7 +51,6 @@ class _WebScreenState extends State<WebScreen> {
   List<UserScript>? _initialScripts;
 
   double _progress = 0;
-  bool _canGoBack = false;
   String? _error;
   DateTime _lastBlockSnack = DateTime.fromMillisecondsSinceEpoch(0);
 
@@ -131,17 +127,16 @@ class _WebScreenState extends State<WebScreen> {
     if (c != null && await c.canGoBack()) await c.goBack();
   }
 
-  Future<void> _refreshCanGoBack() async {
-    final v = await _controller?.canGoBack() ?? false;
-    if (mounted && v != _canGoBack) setState(() => _canGoBack = v);
-  }
-
   void _showBlocked(String reason) {
     final now = DateTime.now();
     if (now.difference(_lastBlockSnack) < const Duration(milliseconds: 1200)) return;
     _lastBlockSnack = now;
     HapticFeedback.lightImpact();
-    if (mounted) AsSnackbar.show(context, reason, icon: LucideIcons.shieldCheck);
+    if (mounted) {
+      AsSnackbar.show(context, reason,
+          icon: LucideIcons.shieldCheck,
+          bottomOffset: kTabBarClearance);
+    }
   }
 
   Future<void> _openExternal(Uri uri) async {
@@ -189,7 +184,6 @@ class _WebScreenState extends State<WebScreen> {
   /// blocker.js handles them first; this is the backstop if the JS failed.
   void _onUpdateVisitedHistory(
       InAppWebViewController c, WebUri? url, bool? isReload) {
-    _refreshCanGoBack();
     if (url == null) return;
     if (decideNavigation(url, _config) is NavAllow) return;
     Future.delayed(const Duration(milliseconds: 400), () async {
@@ -233,6 +227,9 @@ class _WebScreenState extends State<WebScreen> {
     debugPrint('Blocker event: $type $data');
     if (type == 'blocked' && data is Map) {
       _showBlocked((data['reason'] as String?) ?? 'Blocked');
+    } else if (type == 'open_settings') {
+      HapticFeedback.lightImpact();
+      _openSettings();
     }
   }
 
@@ -247,16 +244,11 @@ class _WebScreenState extends State<WebScreen> {
 
   void _openSettings() => SettingsSheet.show(context);
 
-  void _openGallery() {
-    if (!kDebugMode) return;
-    Navigator.of(context).push(
-        MaterialPageRoute<void>(builder: (_) => const WidgetGalleryScreen()));
-  }
-
   @override
   Widget build(BuildContext context) {
     final c = AsColors.of(context);
     final scripts = _initialScripts;
+    final loading = scripts == null || _progress < 1.0;
 
     return PopScope(
       canPop: false,
@@ -265,83 +257,56 @@ class _WebScreenState extends State<WebScreen> {
       },
       child: Scaffold(
         backgroundColor: c.background,
-        body: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            AsTopBar(
-              title: 'AntiSocial',
-              onTitleLongPress: kDebugMode ? _openGallery : null,
-              leading: [
-                AsIconButton(
-                  icon: LucideIcons.chevronLeft,
-                  tooltip: 'Back',
-                  onPressed: _canGoBack ? _handleBack : null,
+        // Full screen like the native app: Instagram's own header and tab bar
+        // are the app's chrome (restyled by skin.css). Top stays clear of the
+        // status bar; the bottom runs under the home indicator so posts scroll
+        // behind the floating tab bar.
+        body: SafeArea(
+          bottom: false,
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              if (scripts != null)
+                InAppWebView(
+                  initialUrlRequest: URLRequest(url: WebUri(kHomeUrl)),
+                  initialSettings: _webSettings(_config),
+                  initialUserScripts: UnmodifiableListView(scripts),
+                  onWebViewCreated: (controller) {
+                    _controller = controller;
+                    controller.addJavaScriptHandler(
+                      handlerName: 'asEvent',
+                      callback: _onJsEvent,
+                    );
+                  },
+                  shouldOverrideUrlLoading: _shouldOverrideUrlLoading,
+                  onUpdateVisitedHistory: _onUpdateVisitedHistory,
+                  onCreateWindow: _onCreateWindow,
+                  onProgressChanged: (_, p) {
+                    final next = p / 100;
+                    // Only rebuild when the bar needs to appear/move/disappear.
+                    if (next != _progress) setState(() => _progress = next);
+                  },
+                  onReceivedError: _onReceivedError,
                 ),
-                AsIconButton(
-                  icon: LucideIcons.house,
-                  tooltip: 'Home',
-                  onPressed: _goHome,
+              if (_error != null)
+                Positioned.fill(
+                  child: AsErrorView(
+                    title: "You're offline",
+                    message: 'Check your connection and try again.',
+                    onRetry: _reload,
+                  ),
                 ),
-              ],
-              trailing: [
-                AsIconButton(
-                  icon: LucideIcons.rotateCw,
-                  tooltip: 'Refresh',
-                  onPressed: _reload,
+              // Only in the tree while loading, so nothing is drawn over the
+              // web view while you scroll.
+              if (loading)
+                Positioned(
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  child: AsProgressBar(progress: scripts == null ? 0 : _progress),
                 ),
-                AsIconButton(
-                  icon: LucideIcons.slidersHorizontal,
-                  tooltip: 'Blocking settings',
-                  onPressed: _openSettings,
-                ),
-              ],
-            ),
-            Expanded(
-              child: SafeArea(
-                top: false,
-                child: Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    if (scripts != null)
-                      InAppWebView(
-                        initialUrlRequest: URLRequest(url: WebUri(kHomeUrl)),
-                        initialSettings: _webSettings(_config),
-                        initialUserScripts: UnmodifiableListView(scripts),
-                        onWebViewCreated: (controller) {
-                          _controller = controller;
-                          controller.addJavaScriptHandler(
-                            handlerName: 'asEvent',
-                            callback: _onJsEvent,
-                          );
-                        },
-                        shouldOverrideUrlLoading: _shouldOverrideUrlLoading,
-                        onUpdateVisitedHistory: _onUpdateVisitedHistory,
-                        onCreateWindow: _onCreateWindow,
-                        onProgressChanged: (_, p) =>
-                            setState(() => _progress = p / 100),
-                        onLoadStop: (_, _) => _refreshCanGoBack(),
-                        onReceivedError: _onReceivedError,
-                      ),
-                    if (_error != null)
-                      Positioned.fill(
-                        child: AsErrorView(
-                          title: "You're offline",
-                          message:
-                              'Check your connection and try again.',
-                          onRetry: _reload,
-                        ),
-                      ),
-                    Positioned(
-                      top: 0,
-                      left: 0,
-                      right: 0,
-                      child: AsProgressBar(progress: scripts == null ? 0 : _progress),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

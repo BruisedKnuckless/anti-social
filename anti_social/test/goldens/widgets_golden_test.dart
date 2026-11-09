@@ -9,7 +9,7 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   for (final brightness in Brightness.values) {
     testWidgets('widget gallery (${brightness.name})', (tester) async {
-      tester.view.physicalSize = const Size(390, 1600);
+      tester.view.physicalSize = const Size(390, 1700);
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.reset);
 

@@ -1,0 +1,137 @@
+/*
+ * AntiSocial "native" skin: makes Instagram's mobile website look and feel
+ * closer to the iOS app. Injected together with blocker.css.
+ *
+ * Targets ONLY data-as-* attributes that blocker.js adds (tagChrome), plus
+ * href/aria/role. Never Instagram's generated class names.
+ */
+
+:root {
+  --as-sb: max(env(safe-area-inset-bottom, 0px), var(--as-safe-bottom, 0px));
+  --as-pill-h: 62px;
+  --as-pill-gap: 16px;
+  --as-glass-bg: rgba(255, 255, 255, 0.72);
+  --as-glass-border: rgba(0, 0, 0, 0.08);
+  --as-glass-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  --as-tab-active: rgba(0, 0, 0, 0.07);
+  --as-icon: #0c1014;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --as-glass-bg: rgba(38, 42, 48, 0.72);
+    --as-glass-border: rgba(255, 255, 255, 0.10);
+    --as-glass-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+    --as-tab-active: rgba(255, 255, 255, 0.12);
+    --as-icon: #f5f5f5;
+  }
+}
+
+/* ---- Feel: no grey tap flash, no link callouts, iOS bounce ----------- */
+* { -webkit-tap-highlight-color: transparent; }
+a, img, svg, [role="button"], [role="link"] { -webkit-touch-callout: none; }
+[data-as-header], [data-as-tabbar], #as-settings { -webkit-user-select: none; user-select: none; }
+
+/* ---- Home header: [+]   Instagram   [heart] ---------------------------- */
+[data-as-header] { display: flex !important; align-items: center !important; }
+[data-as-hdr-right] { display: contents !important; }
+[data-as-hdr-create],
+[data-as-hdr-activity] {
+  /* Equal-width sides keep the logo truly centred. */
+  width: auto !important; min-width: 0 !important; margin: 0 !important;
+}
+[data-as-hdr-create] {
+  order: 0; flex: 1 1 0 !important; display: flex !important;
+  flex-direction: row !important; justify-content: flex-start !important; align-items: center;
+}
+[data-as-hdr-logo] {
+  order: 1; flex: 0 0 auto !important; display: flex !important; justify-content: center;
+}
+[data-as-hdr-activity] {
+  order: 2; flex: 1 1 0 !important; display: flex !important; justify-content: flex-end !important;
+}
+
+/* ---- Floating glass tab bar ------------------------------------------ */
+[data-as-tabbar-wrap] {
+  left: var(--as-pill-gap) !important;
+  right: var(--as-pill-gap) !important;
+  bottom: calc(var(--as-sb) + 4px) !important;
+  width: auto !important;
+  padding: 0 !important;
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  z-index: 50;
+}
+/* Leave room for the settings button on the right. */
+html.as-has-tabbar [data-as-tabbar-wrap] {
+  right: calc(var(--as-pill-gap) + var(--as-pill-h) + 10px) !important;
+}
+/* Instagram's nudge popovers anchored to the tab bar ("x" close bubbles). */
+[data-as-tabbar-wrap] [data-as-tabbar-popover] { display: none !important; }
+
+[data-as-tabbar-chain] {
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  height: auto !important;
+}
+[data-as-tabbar] {
+  height: var(--as-pill-h) !important;
+  padding: 6px !important;
+  box-sizing: border-box !important;
+  border-radius: 999px !important;
+  background: var(--as-glass-bg) !important;
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  backdrop-filter: blur(24px) saturate(180%);
+  border: 0.5px solid var(--as-glass-border) !important;
+  box-shadow: var(--as-glass-shadow) !important;
+  justify-content: space-between !important;
+  align-items: stretch !important;
+}
+[data-as-tab] {
+  flex: 1 1 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border-radius: 999px !important;
+  transition: background-color 0.2s ease;
+}
+[data-as-tab] svg { width: 26px !important; height: 26px !important; }
+[data-as-tab-active] { background: var(--as-tab-active) !important; }
+
+/* Native order: Home, Reels, Messages, Search, Profile. */
+[data-as-tab="home"] { order: 1; }
+[data-as-tab="reels"] { order: 2; }
+[data-as-tab="direct"] { order: 3; }
+[data-as-tab="explore"] { order: 4; }
+[data-as-tab="profile"] { order: 5; }
+html.as-block-reels [data-as-tab="reels"] { display: none !important; }
+
+/* Content can scroll under the pill but the last post stays reachable. */
+html.as-has-tabbar main { padding-bottom: calc(var(--as-pill-h) + var(--as-sb) + 24px) !important; }
+
+/* ---- Settings button (added by blocker.js, outside Instagram's DOM) --- */
+#as-settings {
+  position: fixed;
+  right: var(--as-pill-gap);
+  bottom: calc(var(--as-sb) + 4px);
+  width: var(--as-pill-h);
+  height: var(--as-pill-h);
+  border-radius: 999px;
+  border: 0.5px solid var(--as-glass-border);
+  background: var(--as-glass-bg);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  backdrop-filter: blur(24px) saturate(180%);
+  box-shadow: var(--as-glass-shadow);
+  color: var(--as-icon);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  z-index: 51;
+  transition: transform 0.12s ease;
+}
+html.as-has-tabbar #as-settings { display: flex; }
+#as-settings:active { transform: scale(0.92); }
+#as-settings svg { width: 24px; height: 24px; }

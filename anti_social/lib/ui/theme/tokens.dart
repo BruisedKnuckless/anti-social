@@ -54,8 +54,8 @@ class AsColors extends ThemeExtension<AsColors> {
   );
 
   static const dark = AsColors(
-    background: Color(0xFF000000),
-    surface: Color(0xFF0C0C0E),
+    background: Color(0xFF0C1014), // Instagram's dark page background
+    surface: Color(0xFF15191E),
     surfaceRaised: Color(0xFF1A1A1E),
     border: Color(0xFF26262B),
     textPrimary: Color(0xFFF5F5F7),

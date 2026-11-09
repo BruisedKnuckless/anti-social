@@ -7,6 +7,7 @@ import '../ui/widgets/as_bottom_sheet.dart';
 import '../ui/widgets/as_button.dart';
 import '../ui/widgets/as_dialog.dart';
 import '../ui/widgets/as_error_view.dart';
+import '../ui/widgets/as_fab.dart';
 import '../ui/widgets/as_icon_button.dart';
 import '../ui/widgets/as_progress_bar.dart';
 import '../ui/widgets/as_snackbar.dart';
@@ -91,6 +92,18 @@ class WidgetGalleryContent extends StatelessWidget {
                 AsIconButton(icon: LucideIcons.rotateCw, tooltip: 'Refresh', onPressed: () {}),
                 AsIconButton(icon: LucideIcons.slidersHorizontal, tooltip: 'Settings', onPressed: () {}),
               ],
+            ),
+          ),
+          label('Floating button'),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: AsSpacing.lg),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: AsFab(
+                icon: LucideIcons.slidersHorizontal,
+                tooltip: 'Settings',
+                onPressed: () {},
+              ),
             ),
           ),
           label('Progress bar'),

@@ -7,6 +7,7 @@ import '../services/settings_service.dart';
 import '../ui/theme/tokens.dart';
 import '../ui/widgets/as_bottom_sheet.dart';
 import '../ui/widgets/as_toggle_tile.dart';
+import 'widget_gallery.dart';
 
 /// Feature toggles. Changes save immediately and apply to the page live.
 class SettingsSheet extends StatelessWidget {
@@ -67,11 +68,17 @@ class SettingsSheet extends StatelessWidget {
           ),
         ),
         if (kDebugMode)
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: AsSpacing.lg),
-            child: Text(
-              'Debug: long-press the title for the widget gallery.',
-              style: AsTextStyles.caption.copyWith(color: c.textSecondary),
+          GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onLongPress: () => Navigator.of(context).push(MaterialPageRoute<void>(
+                builder: (_) => const WidgetGalleryScreen())),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(
+                  horizontal: AsSpacing.lg, vertical: AsSpacing.sm),
+              child: Text(
+                'Debug: long-press here for the widget gallery.',
+                style: AsTextStyles.caption.copyWith(color: c.textSecondary),
+              ),
             ),
           ),
       ],

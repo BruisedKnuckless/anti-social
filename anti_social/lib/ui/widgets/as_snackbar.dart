@@ -4,23 +4,26 @@ import '../theme/tokens.dart';
 
 /// Our snackbar, drawn by Flutter (no native toasts), same on both OSes.
 abstract final class AsSnackbar {
-  static void show(BuildContext context, String message, {IconData? icon}) {
+  static void show(BuildContext context, String message,
+      {IconData? icon, double bottomOffset = 0}) {
     final messenger = ScaffoldMessenger.maybeOf(context);
     if (messenger == null) return;
     messenger
       ..hideCurrentSnackBar()
-      ..showSnackBar(build(context, message, icon: icon));
+      ..showSnackBar(
+          build(context, message, icon: icon, bottomOffset: bottomOffset));
   }
 
-  static SnackBar build(BuildContext context, String message, {IconData? icon}) {
+  static SnackBar build(BuildContext context, String message,
+      {IconData? icon, double bottomOffset = 0}) {
     final c = AsColors.of(context);
     return SnackBar(
       behavior: SnackBarBehavior.floating,
       backgroundColor: c.snackbarBg,
       elevation: 0,
       duration: const Duration(seconds: 2),
-      margin: const EdgeInsets.fromLTRB(
-          AsSpacing.lg, 0, AsSpacing.lg, AsSpacing.lg),
+      margin: EdgeInsets.fromLTRB(
+          AsSpacing.lg, 0, AsSpacing.lg, AsSpacing.lg + bottomOffset),
       shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AsRadius.md)),
       content: AsSnackbarContent(message: message, icon: icon),

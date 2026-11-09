@@ -13,3 +13,7 @@ const String kUserAgent =
 
 /// Max text scale for our Flutter UI, so huge system fonts don't break layouts.
 const double kMaxTextScale = 1.3;
+
+/// Space taken by the floating tab bar (skin.css: 62px pill + gap), so
+/// snackbars appear above it.
+const double kTabBarClearance = 72;

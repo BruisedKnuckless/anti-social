@@ -14,6 +14,7 @@ For a real iPhone, open `ios/Runner.xcworkspace` in Xcode → Runner → Signing
 | Path | What |
 |---|---|
 | `assets/inject/blocker.css` / `blocker.js` | The blocker engine. **All selectors are in `SELECTORS` / `TEXT` at the top of `blocker.js`.** Edit these when Instagram changes. |
+| `assets/inject/skin.css` | The "native" look: + / logo / heart header, floating glass tab bar in native order, in-page settings button. Styles only `data-as-*` tags that `tagChrome()` in `blocker.js` adds. |
 | `lib/utils/url_rules.dart` | URL guard (Dart). Keep its path rules in sync with `decide()` in `blocker.js`. |
 | `lib/models/blocker_config.dart` | The 5 toggles and their defaults (all on). |
 | `lib/screens/web_screen.dart` | InAppWebView, script injection, URL guard hooks, JS→Dart events. |
@@ -22,7 +23,7 @@ For a real iPhone, open `ios/Runner.xcworkspace` in Xcode → Runner → Signing
 ## Debugging selectors
 Debug builds are inspectable: iPhone/Simulator → Mac Safari → Develop → [device] → instagram.com.
 The app logs `Blocker event: selector_missing {name: ...}` when a selector stops matching on the logged-in feed.
-Long-press the "AntiSocial" title (debug builds) to open the widget gallery.
+Open the settings sheet (round button next to the tab bar) and long-press the "Debug" line to open the widget gallery (debug builds).
 
 ## Tests
 ```bash
