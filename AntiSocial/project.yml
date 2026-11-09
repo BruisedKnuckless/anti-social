@@ -1,0 +1,33 @@
+# XcodeGen spec — run `xcodegen` in this folder to generate AntiSocial.xcodeproj
+name: AntiSocial
+options:
+  bundleIdPrefix: com.virajwanjari
+  deploymentTarget:
+    iOS: "16.6"
+settings:
+  base:
+    DEVELOPMENT_TEAM: YOUR_TEAM_ID   # <- replace with your 10-character Apple Team ID
+    CODE_SIGN_STYLE: Automatic
+    SWIFT_VERSION: "5.9"
+    MARKETING_VERSION: "0.1"
+    CURRENT_PROJECT_VERSION: "1"
+
+targets:
+  AntiSocial:
+    type: application
+    platform: iOS
+    sources: [App]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.virajwanjari.antisocial
+        TARGETED_DEVICE_FAMILY: "1"
+    info:
+      path: App/Info.plist
+      properties:
+        CFBundleDisplayName: AntiSocial
+        UILaunchScreen: {}
+        UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
+    entitlements:
+      path: App/AntiSocial.entitlements
+      properties:
+        com.apple.developer.family-controls: true

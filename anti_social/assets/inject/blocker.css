@@ -1,0 +1,32 @@
+/*
+ * AntiSocial blocker styles. Injected at document start.
+ *
+ * Every rule is scoped by a class on <html> (set by blocker.js from the
+ * config), so toggling a feature is just a class change: instant, no reload.
+ *
+ * NEVER target Instagram's generated class names (x1lliihq...). Use href,
+ * aria-label, role, or the data-as-* attributes blocker.js adds.
+ */
+
+/* Same overscroll on iOS (WebKit bounce) and Android (Chromium stretch). */
+html { overscroll-behavior: none; }
+
+/* ---- Reels ---------------------------------------------------------- */
+/* Reels tab in the nav, any link to the reels feed, profile "Reels" tabs. */
+html.as-block-reels a[href="/reels/"],
+html.as-block-reels a[href^="/reels/"],
+html.as-block-reels a[href$="/reels/"],
+html.as-block-reels [data-as-reel] { display: none !important; }
+
+/* ---- Stories -------------------------------------------------------- */
+html.as-block-stories [data-as-stories-tray] { display: none !important; }
+
+/* ---- Suggested / sponsored ----------------------------------------- */
+html.as-block-suggested [data-as-suggested] { display: none !important; }
+
+/* ---- "Open in app" nags (always on) -------------------------------- */
+a[href^="instagram://"],
+a[href*="apps.apple.com"],
+a[href*="itunes.apple.com"],
+a[href*="play.google.com/store"],
+[data-as-app-nag] { display: none !important; }
